@@ -1,0 +1,19 @@
+   95  openssl --version
+   96  openssl
+  105  openssl
+  107  openssl genrsa -aes256 -out ca.priv
+  108  openssl req -new -x509 -key ca.priv -out ca.crt
+  109  openssl genrsa -out server.key
+  110  openssl req -new -key server.key -out server.csr
+  111  openssl x509 -req -in server.csr -days 365 -sha2 -CAcreateserial -CA ca.crt -CAkey ca.priv -out server.crt
+  112  openssl x509 -req -in server.csr -days 365 -sha256 -CAcreateserial -CA ca.crt -CAkey ca.priv -out server.crt
+  113  openssl genrsa -out client.key
+  114  openssl x509 -req -in client.csr -days 365 -sha2 -CAcreateserial -CA ca.crt -CAkey ca.priv -out client.crt
+  115  openssl req -new -key client.key -out client.csr
+  116  openssl x509 -req -in client.csr -days 365 -sha2 -CAcreateserial -CA ca.crt -CAkey ca.priv -out client.crt
+  117  openssl x509 -req -in client.csr -days 365 -sha256 -CAcreateserial -CA ca.crt -CAkey ca.priv -out client.crt
+  119  openssl dgst -sha256 -sign server.key  -out sig.bin data
+  120  openssl x509 -pubkey -noout -in server.crt > server.pub
+  134  sudo pip install pyopenssl
+  142  openssl x509 -pubkey -noout -in client.crt > client.pub
+  149  history | grep openssl > history
