@@ -6,11 +6,17 @@ import struct
 import argparse
 import datetime
 import hashlib
+
+import ssl
+import socket
+import urllib2
+
 from subprocess import Popen
 from subprocess import PIPE
 from OpenSSL import crypto
 from Crypto.Hash import SHA256
 
+url="https://localhost/"
 tmp_current_imgfile_name = "sample_data_file"
 
 current_imgfile_name = "sample_data_file.signed"
@@ -149,7 +155,14 @@ def image_down():
   global server_file_name
   global server_file_name_signed
 #temp code, Local data needs to be changed to server data.
-  sign_image(server_file_name)
+#  sign_image(server_file_name)
+  server_file_response = https_connection(url, "sample_data_file.signed")
+  content = server_file_response.read();
+  f = open("test/"+server_file_name_signed, "w")
+  f.write(content)
+  f.close()
+  server_file_name_signed = "test/"+server_file_name_signed
+
 #end temp code
   firmware_update()
 #----------------------------------------------------------------------------
@@ -166,6 +179,18 @@ def compare_version():
     image_down()
   else :
    return True
+
+#----------------------------------------------------------------------------
+# HTTPS CONNECTION
+#----------------------------------------------------------------------------
+def https_connection(url, data):
+  context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+  context.verify_mode = ssl.CERT_REQUIRED
+  context.check_hostname = False #This is check for DNSNAME
+  context.load_verify_locations(cerfile_name) #certificate file
+  print url+data
+  response = urllib2.urlopen(url+data, context=context)
+  return response
 
 #----------------------------------------------------------------------------
 # MAIN SCRIPT BEGIN
