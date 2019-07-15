@@ -6,20 +6,24 @@
 
 var app = require('../app');
 var debug = require('debug')('sotaserver:server');
-var http = require('http');
+var https = require('https');
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
+var port = normalizePort('33341');
 app.set('port', port);
 
 /**
- * Create HTTP server.
+ * Create HTTPS server.
  */
-
-var server = http.createServer(app);
+// TODO: need to imporve option for proper chiper suite and so on.
+var db = require('../storage/db');
+var server = https.createServer({
+  key: db.getKey(),
+  cert: db.getCert()
+}, app);
 
 /**
  * Listen on provided port, on all network interfaces.
