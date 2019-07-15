@@ -15,7 +15,7 @@ from subprocess import Popen
 from subprocess import PIPE
 from OpenSSL import crypto
 from Crypto.Hash import SHA256
-
+import time
 url="https://localhost/"
 tmp_current_imgfile_name = "sample_data_file"
 
@@ -24,7 +24,7 @@ keyfile_name = "test.key"
 cerfile_name = 'test.crt'
 
 #server data
-server_version = 2
+server_version = 0
 server_file_name = "sample_data_file_server"
 server_file_name_signed = "sample_data_file_server.signed"
 #image structure
@@ -51,13 +51,9 @@ def sign_image(img_name):
       f.seek(0);
       img_data = f.read(imgfile_size)
 
-  # hash boot image
-  # img_hash = hashlib.sha256(img_data).digest()
   img_hash = SHA256.new(img_data.encode('utf-8')).digest()
 
   # sign with private RSA key
-  #p = Popen(["openssl", "rsautl", "-sign", "-inkey", keyfile_name], stdin = PIPE, stdout = PIPE)
-  #rsa_sign = p.communicate(img_hash)[0]
   with open(keyfile_name, 'rb+') as f:
       pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
 
@@ -98,8 +94,8 @@ def read_current_image():
 
   print current_magic
   print current_version[0]
+  current_version = current_version[0]
   print current_body_len[0]
-#  body_len2 = (int)body_len
   print current_body
   print len(current_sig)
   print type(current_sig)
@@ -127,7 +123,7 @@ def firmware_update():
   
   with open(cerfile_name, 'rb+') as f:
     cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
-
+    f.close()
   with open(server_file_name_signed, 'rb+') as f:
       f.seek(0,2)
       img_len = f.tell()
@@ -135,16 +131,17 @@ def firmware_update():
       msg = f.read(img_len-LGE_RSASIGN_SIZE)
       sig = f.read(LGE_RSASIGN_SIZE)
       dgst = SHA256.new(msg.encode('utf-8')).digest()
-
+      f.close()
   if (verify_signature(cert, sig, dgst)):
       print "verify ok"
   else:
       print "verify ng"
+      return False
   print "change"
 
   os.remove(current_imgfile_name)
   os.rename(server_file_name_signed, current_imgfile_name)
-
+  return True
 
 #----------------------------------------------------------------------------
 # image_down SCRIPT BEGIN
@@ -152,33 +149,14 @@ def firmware_update():
 
 def image_down():
   print "image_down"
-  global server_file_name
   global server_file_name_signed
 #temp code, Local data needs to be changed to server data.
-#  sign_image(server_file_name)
-  server_file_response = https_connection(url, "sample_data_file.signed")
+  server_file_response = https_connection(url, server_file_name)
   content = server_file_response.read();
-  f = open("test/"+server_file_name_signed, "w")
+  f = open(server_file_name_signed, "w") #sample_data_file_server.signed
   f.write(content)
   f.close()
-  server_file_name_signed = "test/"+server_file_name_signed
-
-#end temp code
-  firmware_update()
-#----------------------------------------------------------------------------
-# COMPARE SCRIPT BEGIN
-#----------------------------------------------------------------------------
-
-def compare_version():
-  global current_version
-  global server_version
-  print "compare_version"
-  print server_version
-  print current_version
-  if server_version > current_version[0]:
-    image_down()
-  else :
-   return True
+#does it need to error handling?
 
 #----------------------------------------------------------------------------
 # HTTPS CONNECTION
@@ -192,16 +170,46 @@ def https_connection(url, data):
   response = urllib2.urlopen(url+data, context=context)
   return response
 
+def get_version_to_server():
+  global server_version
+  server_version = 2
+  return True
 #----------------------------------------------------------------------------
 # MAIN SCRIPT BEGIN
 #----------------------------------------------------------------------------
 
 def main():
-  global tmp_current_imgfile_name
+  global current_version
+  global server_version
+  global tmp_current_imgfile_name #sample_data_file - no signed
   sign_image(tmp_current_imgfile_name)
-
   read_current_image()
-  compare_version()
+  while True:
+    time.sleep(5)
+    print "i'm alive"
+    ret = get_version_to_server()
+    if ret == False:
+      print "connection failed"
+      continue
+    print "server _version "
+    print server_version
+    print "currten version "
+    print current_version
+    if ret == True and server_version > current_version:
+      image_down()
+      ret = firmware_update()
+    else :
+      continue
+    if ret == True:
+      print "change current version"
+      current_version = server_version
+      server_version = 0
+      print "server _version "
+      print server_version
+      print "currten version "
+      print current_version
+    else : 
+      continue
   sys.exit()
 
 if __name__ == "__main__":
