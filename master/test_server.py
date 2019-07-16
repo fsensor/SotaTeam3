@@ -9,7 +9,7 @@
 import BaseHTTPServer, SimpleHTTPServer
 import ssl
 
-httpd = BaseHTTPServer.HTTPServer(('localhost', 443), SimpleHTTPServer.SimpleHTTPRequestHandler)
+httpd = BaseHTTPServer.HTTPServer(('https://192.168.0.4/', 443), SimpleHTTPServer.SimpleHTTPRequestHandler)
 #httpd.socket = ssl.wrap_socket (httpd.socket, certfile='/home/pi/python_test/server.pem', server_side=True)
 httpd.socket = ssl.wrap_socket (httpd.socket, certfile='test.crt', keyfile='test.key', server_side=True)
 httpd.serve_forever()
