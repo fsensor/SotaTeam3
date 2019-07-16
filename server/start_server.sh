@@ -41,11 +41,4 @@ then
   checkOption $@
 fi
 
-if [[ $run_as_daemon -eq 1 ]]
-then
-  echo Run as a daemon 
-  nohup npm start&
-else
-  echo Run
-  npm start 
-fi
+slc start 
