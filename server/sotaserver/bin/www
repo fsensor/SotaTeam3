@@ -7,6 +7,10 @@
 var app = require('../app');
 var debug = require('debug')('sotaserver:server');
 var https = require('https');
+const tls = require('tls');
+
+// Client Should use TLS 1.3
+tls.DEFAULT_MIN_VERSION = 'TLSv1.3';
 
 /**
  * Get port from environment and store in Express.
@@ -19,12 +23,39 @@ app.set('port', port);
  * Create HTTPS server.
  */
 // TODO: need to imporve option for proper chiper suite and so on.
+
+
+// inho.kang add get cipher
+var ciphers = tls.getCiphers();
+console.log(ciphers); // ['AES128-SHA', 'AES256-SHA', ...]
+
 var db = require('../storage/db');
+
+
+// inho.kang add testcode
+var options = {
+  key: db.getKey(),
+  cert: db.getCert(),
+  ca: db.getCACert(),
+
+  requestCert: true,
+};
+
+var server = tls.createServer(options, function(cleartextStream) {
+  console.log('server connected',
+              cleartextStream.authorized ? 'authorized' : 'unauthorized');
+  cleartextStream.write("welcome!\n");
+  cleartextStream.setEncoding('utf8');
+  cleartextStream.pipe(cleartextStream);
+});
+
+/*
 var server = https.createServer({
   key: db.getKey(),
-  cert: db.getCert()
-}, app);
-
+  cert: db.getCert(),
+  ca: db.getCACert()
+  }, app);
+*/
 /**
  * Listen on provided port, on all network interfaces.
  */

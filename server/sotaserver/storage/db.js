@@ -13,6 +13,10 @@ function getKey() {
 	return fs.readFileSync("test/cert/key.pem");
 }
 
+function getCACert() {
+	return fs.readFileSync("test/cert/CACert.pem");
+}
+
 function getVersion(onResult) {
 	if (typeof onResult !== 'function') {
 		return;
@@ -38,6 +42,7 @@ function getLatestImagePath(onResult) {
 
 module.exports = {
 	getCert: getCert,
+	getCACert : getCACert,
 	getKey: getKey,
 	getVersion: getVersion,
 	getLatestImagePath: getLatestImagePath
