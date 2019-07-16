@@ -1,6 +1,7 @@
 var express = require('express');
 var handler = require('../api/handler.js');
 var router = express.Router();
+var logger = require('../common/logger.js');
 
 const ERROR_CODES = require('../common/errorcodes.js');
 
@@ -36,7 +37,40 @@ function getFromErrorCode(errorCodes) {
   return response;
 }
 
-function getResultHandler(res) {
+function IsReqInvalid(req) {
+  return (typeof req === 'undefined' || req === null || 
+      typeof req.method  !== 'string' || typeof req.url !== 'string' ||
+      typeof req.client === 'undefined' || req.client === null ||
+      typeof req.client._peername === 'undefined' ||
+      typeof req.socket === 'undefined' || req.socket === null ||
+      typeof req.socket.server === 'undefined' || req.socket.server === null ||
+      typeof req.socket.server.sessionIdContext === 'undefined');
+}
+
+function logRequest(req) {
+  if (IsReqInvalid(req)) {
+    console.log("REQ error");
+    return null;
+  }
+
+  let reqinfo = req.method + " for " + req.url +
+      " from " + JSON.stringify(req.client._peername) +
+      " ID [" + req.socket.server.sessionIdContext +"]";
+
+  logger.info("Request " + reqinfo);
+  
+  return reqinfo;
+}
+
+function logResponse(res, req) {
+  if (typeof res === 'undefined' || res === null) {
+    return;
+  }
+
+  logger.info("Response " + res.statusCode + " for the request " + req);
+}
+
+function getResultHandler(res, reqinfo) {
   return function (errorCode, result) {
     res.status(convertStatusCode(errorCode));
     if (ERROR_CODES.IsNoError(errorCode) && typeof result !== 'undefined') {
@@ -44,6 +78,7 @@ function getResultHandler(res) {
     } else {
       res.json(getFromErrorCode(errorCode));
     }
+    logResponse(res, reqinfo);  
   };
 }
 
@@ -54,12 +89,13 @@ router.options('*', (req, res, next) => {
 		res.send();
 });
 
+
 router.get('/GetVersion', function(req, res, next) {
-	handler.getVersion(getResultHandler(res));
+	handler.getVersion(getResultHandler(res, logRequest(req)));
 });
 
 router.get('/GetLatestImage', function(req, res, next) {
-	handler.getLatestImage(getResultHandler(res));
+	handler.getLatestImage(getResultHandler(res, logRequest(req)));
 });
 
 module.exports = router;
