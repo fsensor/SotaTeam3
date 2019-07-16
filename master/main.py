@@ -10,18 +10,24 @@ import hashlib
 import ssl
 import socket
 import urllib2
+import json,ast,base64
+import BaseHTTPServer, SimpleHTTPServer
+import threading
 
 from subprocess import Popen
 from subprocess import PIPE
 from OpenSSL import crypto
 from Crypto.Hash import SHA256
 import time
-url="https://localhost/"
+server_url="https://localhost:33341/"
+master_addr="192.168.0.7"
 tmp_current_imgfile_name = "sample_data_file"
 
 current_imgfile_name = "sample_data_file.signed"
 keyfile_name = "test.key" 
 cerfile_name = 'test.crt'
+https_cerfile_name = 'cert.pem'
+https_keyfile_name = 'key.pem'
 
 #server data
 server_version = 0
@@ -150,30 +156,59 @@ def firmware_update():
 def image_down():
   print "image_down"
   global server_file_name_signed
-#temp code, Local data needs to be changed to server data.
-  server_file_response = https_connection(url, server_file_name)
-  content = server_file_response.read();
+  server_file_response = https_connection(server_url, "GetLatestImage")
+  content = base64.b64decode(server_file_response.read())
   f = open(server_file_name_signed, "w") #sample_data_file_server.signed
   f.write(content)
   f.close()
 #does it need to error handling?
 
 #----------------------------------------------------------------------------
+# GET VERSION INFO
+#----------------------------------------------------------------------------
+
+def get_version_to_server():
+  global server_version
+
+  server_file_response = https_connection(server_url, "GetVersion")
+  content = json.load(server_file_response)
+  content = ast.literal_eval(content)
+  server_version_info = content['version_info'][0]
+  server_version = server_version_info.get('version')
+  return True
+
+#----------------------------------------------------------------------------
 # HTTPS CONNECTION
 #----------------------------------------------------------------------------
+
 def https_connection(url, data):
   context = ssl.SSLContext(ssl.PROTOCOL_TLS)
   context.verify_mode = ssl.CERT_REQUIRED
   context.check_hostname = False #This is check for DNSNAME
-  context.load_verify_locations(cerfile_name) #certificate file
+  context.load_verify_locations(https_cerfile_name) #certificate file
   print url+data
   response = urllib2.urlopen(url+data, context=context)
   return response
 
-def get_version_to_server():
-  global server_version
-  server_version = 2
-  return True
+#----------------------------------------------------------------------------
+# Slave CONNECTION
+#----------------------------------------------------------------------------
+
+def slave_connection():
+  global master_addr
+  httpsd = BaseHTTPServer.HTTPServer((master_addr, 33341), SimpleHTTPServer.SimpleHTTPRequestHandler)
+  httpsd.socket = ssl.wrap_socket (httpsd.socket, certfile=https_cerfile_name, keyfile=https_keyfile_name, server_side=True)
+  thread = threading.Thread(target = httpsd.serve_forever)
+  thread.daemon = True
+
+  try:
+    thread.start()
+    print "slave connection thread start"
+  except:
+    print "slave connection thread error"
+    httpsd.shutdown()
+    sys.exit()
+
 #----------------------------------------------------------------------------
 # MAIN SCRIPT BEGIN
 #----------------------------------------------------------------------------
@@ -184,6 +219,7 @@ def main():
   global tmp_current_imgfile_name #sample_data_file - no signed
   sign_image(tmp_current_imgfile_name)
   read_current_image()
+  slave_connection()
   while True:
     time.sleep(5)
     print "i'm alive"
@@ -191,9 +227,9 @@ def main():
     if ret == False:
       print "connection failed"
       continue
-    print "server _version "
+    print "server version "
     print server_version
-    print "currten version "
+    print "current version "
     print current_version
     if ret == True and server_version > current_version:
       image_down()
@@ -204,9 +240,9 @@ def main():
       print "change current version"
       current_version = server_version
       server_version = 0
-      print "server _version "
+      print "server version "
       print server_version
-      print "currten version "
+      print "current version "
       print current_version
     else : 
       continue

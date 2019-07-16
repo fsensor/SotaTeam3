@@ -1,29 +1,64 @@
 'use strict';
 
-const remote_admin = require("./remoteadmin.js");
-const util = require("util");
+const util = require('util');
+const winston = require('winston');
+const signer = require('./cryptoutil.js');
+
+require('winston-syslog').Syslog;
+
+var syslogger = winston.createLogger({
+    levels: winston.config.syslog.levels,
+    transports: [
+      new winston.transports.Syslog({
+          protocol: 'udp4',
+          port: '51451',
+          facility: 'local3',
+          localhost: 'SOTA',
+          type: '5424',
+          app_name: 'Server'
+      })
+    ]
+});
 
 var logger, 
   levels = {
-    E: 0, W: 1, I: 2, D: 3,
+    E: {
+        value: 0,
+        gt: level => { return this.value > level.value; },
+        toSysLogLevel: () => { return "error"; }
+    },
+    W: {
+        value: 1,
+        gt: level => { return this.value > level.value; },
+        toSysLogLevel: () => { return "warning"; }
+    },
+    D: {
+        value: 2,
+        gt: level => { return this.value > level.value; },
+        toSysLogLevel: () => { return "debug"; }
+    },
+    I: {
+        value: 3,
+        gt: level => { return this.value > level.value; },
+        toSysLogLevel: () => { return "info"; }
+    },
   },
   currentLevel = levels.I,
   realConsole = console;
 
-function logToRemoteAdmin(level, message) {
-  remote_admin.sendMessage(
-      remote_admin.TYPE.LOG,
-      {level: level, message: message}
-  );
+
+function doSyslog(level, message) {
+  let signature = signer.sign(message);
+  syslogger.log(level, message + '  SIGN [' + signature + ']');
 }
 
 function log(level, ...args) {
-  if (args.length === 0 || level > currentLevel) {
+  if (args.length === 0 || level.gt(currentLevel)) {
     return;
   }
 
   realConsole.log(...args)
-  logToRemoteAdmin(level, util.format(...args));
+  doSyslog(level.toSysLogLevel(), util.format(...args));
 }
 
 function setLogLevel(level) {

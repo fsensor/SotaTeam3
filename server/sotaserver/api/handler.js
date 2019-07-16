@@ -3,7 +3,6 @@
 var db = require('../storage/db.js');
 var imagereader= require('../storage/imagereader.js');
 var asynccaller = require('../common/asynccaller.js');
-
 const ERROR_CODES = require('../common/errorcodes.js');
 
 function convertVersionFormat(version) {
