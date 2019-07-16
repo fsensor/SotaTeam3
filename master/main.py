@@ -10,7 +10,7 @@ import hashlib
 import ssl
 import socket
 import urllib2
-import json,ast
+import json,ast,base64
 import BaseHTTPServer, SimpleHTTPServer
 import threading
 
@@ -156,9 +156,8 @@ def firmware_update():
 def image_down():
   print "image_down"
   global server_file_name_signed
-#temp code, Local data needs to be changed to server data.
   server_file_response = https_connection(server_url, "GetLatestImage")
-  content = server_file_response.read();
+  content = base64.b64decode(server_file_response.read())
   f = open(server_file_name_signed, "w") #sample_data_file_server.signed
   f.write(content)
   f.close()
@@ -175,9 +174,7 @@ def get_version_to_server():
   content = json.load(server_file_response)
   content = ast.literal_eval(content)
   server_version_info = content['version_info'][0]
-  print server_version_info.get('version')
-
-  server_version = 2
+  server_version = server_version_info.get('version')
   return True
 
 #----------------------------------------------------------------------------
@@ -230,9 +227,9 @@ def main():
     if ret == False:
       print "connection failed"
       continue
-    print "server _version "
+    print "server version "
     print server_version
-    print "currten version "
+    print "current version "
     print current_version
     if ret == True and server_version > current_version:
       image_down()
@@ -243,9 +240,9 @@ def main():
       print "change current version"
       current_version = server_version
       server_version = 0
-      print "server _version "
+      print "server version "
       print server_version
-      print "currten version "
+      print "current version "
       print current_version
     else : 
       continue

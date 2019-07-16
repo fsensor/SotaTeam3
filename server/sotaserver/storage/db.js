@@ -21,7 +21,7 @@ function getVersion(onResult) {
 	asynccaller.call(
 			onResult,
 			ERROR_CODES.SUCCESS,
-			'{ "version_info": [{ "version_type": "latest", "version": "00.00.01", "image_name": "test.txt", "image_type": "text", "priorty": "urgent" }] }'
+			'{ "version_info": [{ "version_type": "latest", "version": "2", "image_name": "test.txt", "image_type": "text", "priorty": "urgent" }] }'
 	);	
 }
 
@@ -32,7 +32,7 @@ function getLatestImagePath(onResult) {
 	asynccaller.call(
 		onResult,
 		ERROR_CODES.SUCCESS,
-		'test/image/test.txt'
+		'test/image/sample_data_file_server'
 	);
 }
 
