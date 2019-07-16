@@ -54,9 +54,9 @@ def sign_image(img_name):
   with open(img_name, 'rb') as f:
       f.seek(0, 2)
       imgfile_size = f.tell()
-      f.seek(0);
+      f.seek(0)
       img_data = f.read(imgfile_size)
-
+      f.close()
   img_hash = SHA256.new(img_data.encode('utf-8')).digest()
 
   # sign with private RSA key
@@ -70,6 +70,7 @@ def sign_image(img_name):
   with open(tmp, 'wb') as f:
       f.write(img_data)
       f.write(rsa_sign)
+      f.close()
   print "end sign_image"
   return True
 
@@ -86,7 +87,7 @@ def read_current_image():
   with open(current_imgfile_name, 'rb') as f:
       f.seek(0, 2)
       imgfile_size = f.tell()  
-      f.seek(0);
+      f.seek(0)
       img_data = f.read(imgfile_size)
       f.seek(0)
       current_magic = f.read(4)
@@ -97,6 +98,7 @@ def read_current_image():
       current_body = f.read(current_body_len[0])
       f.seek(imgfile_size-LGE_RSASIGN_SIZE)
       current_sig = f.read(LGE_RSASIGN_SIZE)
+      f.close()
 
   print current_magic
   print current_version[0]
