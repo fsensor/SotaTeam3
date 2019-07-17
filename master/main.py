@@ -8,10 +8,11 @@ import datetime
 import hashlib
 
 import ssl
+from twisted.internet.ssl import TLSVersion
 import socket
-import urllib2
+from urllib.request import urlopen
 import json,ast,base64
-import BaseHTTPServer, SimpleHTTPServer
+import http.server
 import threading
 
 from subprocess import Popen
@@ -19,15 +20,28 @@ from subprocess import PIPE
 from OpenSSL import crypto
 from Crypto.Hash import SHA256
 import time
-server_url="https://192.168.0.14:33341/"
-master_addr="192.168.0.6"
+
+#server_url="https://192.168.0.14:33341/"
+server_url="https://localhost:33341/"
+master_addr="192.168.0.4"
 tmp_current_imgfile_name = "sample_data_file"
 
 current_imgfile_name = "sample_data_file.signed"
-keyfile_name = "test.key" 
-cerfile_name = 'test.crt'
-https_cerfile_name = 'cert.pem'
-https_keyfile_name = 'key.pem'
+key_dir = "/home/pi/sota/SotaTeam3/keys/"
+keyfile_name = key_dir+"./SigningServer/SignPriv.pem"
+cerfile_name = key_dir+"./SigningServer/SignPub.pem"
+master_cerfile_name = key_dir+'./Mastercert/MasterCert.pem'
+master_keyfile_name = key_dir+'./Mastercert/MasterPriv.pem'
+master_chain_name = key_dir+'./Mastercert/MasterChain.pem'
+server_cerfile_name = key_dir+'ServerCert/ServerCert.pem'
+server_keyfile_name = key_dir+'ServerCert/ServerPriv.pem'
+server_chain_name = key_dir+'ServerCert/ServerChain.pem'
+slave1_cerfile_name = key_dir+'./Slave1Cert/Slave1Cert.pem'
+slave1_keyfile_name = key_dir+'./Slave1Cert/Slave1Priv.pem'
+slave1_chain_name = key_dir+'./Slave1Cert/SlaveChain.pem'
+slave2_cerfile_name = key_dir+'./Slave2Cert/Slave2Cert.pem'
+slave2_keyfile_name = key_dir+'./Slave2Cert/Slave2Priv.pem'
+slave2_chain_name = key_dir+'./Slave2Cert/Slave2Chain.pem'
 
 #server data
 server_version = 0
@@ -57,7 +71,7 @@ def sign_image(img_name):
       f.seek(0);
       img_data = f.read(imgfile_size)
 
-  img_hash = SHA256.new(img_data.encode('utf-8')).digest()
+  img_hash = SHA256.new(str(img_data).encode('utf-8')).digest()
 
   # sign with private RSA key
   with open(keyfile_name, 'rb+') as f:
@@ -105,7 +119,7 @@ def read_current_image():
   print (current_body)
   print (len(current_sig))
   print (type(current_sig))
-  print (current_sig.encode("hex"))
+  print (current_sig.hex())
 #sig = f.read(imgfile_size-)
 
 def verify_signature(cert, sig, dgst):
@@ -136,7 +150,7 @@ def firmware_update():
       f.seek(0)
       msg = f.read(img_len-LGE_RSASIGN_SIZE)
       sig = f.read(LGE_RSASIGN_SIZE)
-      dgst = SHA256.new(msg.encode('utf-8')).digest()
+      dgst = SHA256.new(str(msg).encode('utf-8')).digest()
       f.close()
   if (verify_signature(cert, sig, dgst)):
       print ("verify ok")
@@ -159,7 +173,7 @@ def image_down():
   server_file_response = https_connection(server_url, "GetLatestImage")
   content = base64.b64decode(server_file_response.read())
   f = open(server_file_name_signed, "w") #sample_data_file_server.signed
-  f.write(content)
+  f.write(str(content))
   f.close()
 #does it need to error handling?
 
@@ -185,9 +199,10 @@ def https_connection(url, data):
   context = ssl.SSLContext(ssl.PROTOCOL_TLS)
   context.verify_mode = ssl.CERT_REQUIRED
   context.check_hostname = False #This is check for DNSNAME
-  context.load_verify_locations(https_cerfile_name) #certificate file
+  context.load_verify_locations(server_chain_name) #certificate file
+  context.load_cert_chain(certfile=master_cerfile_name, keyfile=master_keyfile_name)
   print (url+data)
-  response = urllib2.urlopen(url+data, context=context)
+  response = urlopen(url+data, context=context)
   return response
 
 #----------------------------------------------------------------------------
@@ -196,8 +211,8 @@ def https_connection(url, data):
 
 def slave_connection():
   global master_addr
-  httpsd = BaseHTTPServer.HTTPServer((master_addr, 33341), SimpleHTTPServer.SimpleHTTPRequestHandler)
-  httpsd.socket = ssl.wrap_socket (httpsd.socket, certfile=https_cerfile_name, keyfile=https_keyfile_name, server_side=True)
+  httpsd = http.server.HTTPServer((master_addr, 33341), http.server.SimpleHTTPRequestHandler)
+  httpsd.socket = ssl.wrap_socket (httpsd.socket, certfile=master_cerfile_name, keyfile=master_keyfile_name, server_side=True)
   thread = threading.Thread(target = httpsd.serve_forever)
   thread.daemon = True
 
