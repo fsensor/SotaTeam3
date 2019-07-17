@@ -58,14 +58,20 @@ SLP_DIR=strong-pm
 SLP_PATH=$absolute_path$SLP_DIR
 ESCAPED_SLP_PATH=$(echo $SLP | sed -E "")
 SYSTEMD_FILE_PATH=/lib/systemd/system/
-
+SLP_PM_HOME=$SLP_PATH/pm
 TO_BE_REPLACED=REPLACE_TO_REAL_PATH
+
+if [ ! -d $SLP_HOME ]
+then
+  echo "Create StrongLoop PM home dir"
+  mkdir -p $SLP_PM_HOME
+fi
 
 # Replace environment
 if [ ! -f $SLP_PATH/systemd/$REAL_SLP_SERVICE_FILE ]
 then
   echo "Generating StrongLoop PM service file"
-  sed -E "s#$TO_BE_REPLACED#$SLP_PATH/pm#" $SLP_PATH/systemd/$SLP_SERVICE_SED_FILE > $SLP_PATH/systemd/$REAL_SLP_SERVICE_FILE
+  sed -E "s#$TO_BE_REPLACED#$SLP_PM_HOME#" $SLP_PATH/systemd/$SLP_SERVICE_SED_FILE > $SLP_PATH/systemd/$REAL_SLP_SERVICE_FILE
 fi
 
 
