@@ -1,11 +1,33 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
-var imageMetaSchema = new Schema({
-	version: String,
-	path: String,
-	type: String,
-	date: { type: Date, default: Date.now  }
-});
+const version = mongoose.model('version', new Schema(
+    {
+        version: String,
+        path: String,
+        type: String,
+        date: String
+    },
+    {
+        _id: false,
+        collection: "versionInfo"
+    }
+));
 
-module.exports = mongoose.model('version', imageMetaSchema);
+const certificate= mongoose.model('certificate', new Schema(
+    {
+        cert: String,
+        key: String,
+        cacert: String
+    },
+    {
+        _id: false,
+        collection: "certificate"
+    }
+));
+
+
+module.exports = {
+  version: version,
+  certificate: certificate
+};

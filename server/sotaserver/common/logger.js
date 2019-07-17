@@ -48,8 +48,9 @@ var logger,
 
 
 function doSyslog(level, message) {
-  let signature = signer.sign(message);
-  syslogger.log(level, message + '  SIGN [' + signature + ']');
+  let signature = signer.sign(message, signature => {
+    syslogger.log(level, message + '  SIGN [' + signature + ']');
+  });
 }
 
 function log(level, ...args) {

@@ -1,0 +1,17 @@
+{
+    "versionInfo": [
+        {
+            "version": "00.00.01",
+            "path": "./test/image/test.txt",
+            "type": "formatType1",
+            "date": "Wed, 17 Jul 2019 05:58:54 GMT"  
+        }
+    ],
+    "certificate": [
+        {
+            "cert": "./test/cert/cert.pem",
+            "key": "./test/cert/key.pem",
+            "cacert": "./test/cert/CACert.pem"
+        }
+    ]
+}

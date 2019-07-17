@@ -3,7 +3,7 @@
 var fs = require("fs");
 var asynccaller = require('../common/asynccaller.js');
 
-var ImageMeta = require('../models/imageMeta');
+const ImageMeta = require('../models/imageMeta');
 
 // CONNECT TO MONGODB SERVER
 var mongoose = require('mongoose');
@@ -13,60 +13,77 @@ db.once('open', function(){
     // CONNECTED TO MONGODB SERVER
     console.log("Connected to mongod server");
 });
-mongoose.connect('mongodb://localhost/mongodb_imageMeta', { useNewUrlParser: true });
+mongoose.connect('mongodb://localhost/imageMeta', { useNewUrlParser: true });
 
 const ERROR_CODES = require('../common/errorcodes.js');
 
-function getCert() {
-	return fs.readFileSync("test/cert/cert.pem");
+function getKeyByType(onResult, type) {
+  if (typeof type !== 'string') {
+    asynccaller.call(onResult, null);
+    return;
+  }
+
+	ImageMeta.certificate.find(
+      (err, meta) => {
+        let key = null;
+        if (!err) {
+          key=fs.readFileSync(meta[0][type]);
+        }
+        asynccaller.call(onResult, key);
+      }
+  );
 }
 
-function getKey() {
-	return fs.readFileSync("test/cert/key.pem");
+function getCert(onResult) {
+  if (typeof onResult !== 'function') {
+    return;
+  }
+  
+  getKeyByType(onResult, "cert");
 }
 
-function getCACert() {
-	return fs.readFileSync("test/cert/CACert.pem");
+function getKey(onResult) {
+  if (typeof onResult !== 'function') {
+    return;
+  }
+  
+  getKeyByType(onResult, "key");
 }
 
-function getVersion(onResult) {
+function getCACert(onResult) {
+  if (typeof onResult !== 'function') {
+    return;
+  }
+  
+  getKeyByType(onResult, "cacert");
+}
+
+function getImageMetas(onResult) {
 	if (typeof onResult !== 'function') {
 		return;
 	}
+
 	// TODO: Read from real db
-	ImageMeta.find(function(err, images) {
-		if (err) {
-			asynccaller.call(
-				onResult,
-				ERR_INTERNAL_ERROR,
-				'error'
-			);
-		} else {		
-			asynccaller.call(
-				onResult,
-				ERROR_CODES.SUCCESS,
-				//'{ "version_info": [{ "version_type": "latest", "version": "2", "image_name": "test.txt", "image_type": "text", "priorty": "urgent" }] }'
-				images
-			);
-		}
-	});
-}
+  console.log("Access to DB to get image meta data");
+	ImageMeta.version.find(function(err, meta) {
+    let errorcode = ERROR_CODES.SUCCESS;
 
-function getLatestImagePath(onResult) {
-	if (typeof onResult !== 'function') {
-		return;
-	}
-	asynccaller.call(
-		onResult,
-		ERROR_CODES.SUCCESS,
-		'test/image/sample_data_file_server'
-	);
+		if (err) {
+      console.log("DB read error");
+      errorcode = ERROR_CODE.ERR_INTERNAL_ERROR;
+		} 
+
+    asynccaller.call(
+				onResult,
+				errorcode,
+			  meta	
+			);
+	});
 }
 
 module.exports = {
 	getCert: getCert,
 	getCACert : getCACert,
 	getKey: getKey,
-	getVersion: getVersion,
-	getLatestImagePath: getLatestImagePath
+	getImageMetas: getImageMetas
 }
