@@ -25,32 +25,32 @@ function getOption(option, prefix) {
 var optionprocessor = [
   {
       prefix: 'dbname=',
-      set: (option) => dbName = getOptions(option, this->prefix)
+      set: (option, prefix) => dbName = getOption(option, prefix)
   },
   {
       prefix: 'imageinfo=',
-      set: (option) => imageinfo = getOptions(option, this->prefix)
+      set: (option, prefix) => imageinfo = getOption(option, prefix)
   },
   {
       prefix: 'host=',
-      set: (option) => host = getOptions(option, this->prefix)
+      set: (option, prefix) => host = getOption(option, prefix)
   },
   {
       prefix: 'port=',
-      set: (option) => port = getOptions(option, this->prefix)
+      set: (option, prefix) => port = getOption(option, prefix)
   }
 ];
 
 for (let option of cmdLineOptions) {
-  console.log('process option ' + option)
   for (let opt_processor of optionprocessor) {
-    if (option.startsWith(opt_processor.prefix) {
-      opt_processor.set(option);
+    if (option.startsWith(opt_processor.prefix)) {
+      opt_processor.set(option, opt_processor.prefix);
     } 
   }
 }
 
-if (port === null || host === null || dbName === null || imageinfo === null) {
+if (typeof port !== 'string' || typeof host !== 'string' ||
+    typeof dbName !== 'string' || typeof imageinfo !== 'string') {
   console.log('host, port, db name, and a file for image information must be given');
   return;
 }
@@ -78,32 +78,71 @@ MongoClient.connect(
     console.log('(Create and) Add data to %s database', dbName);
     let targetDB = client.db(dbName);
     let collectionList = await targetDB.command(
-        { listCollections: 1, nameOnly: true }
+        { listCollections: 1 }
     );
-
     let imageinfodatas;
+    
 
     try { 
       imageinfodatas = JSON.parse(fs.readFileSync(imageinfo));
-    } catch () {
-      console.log("Exception while reading and parsing %s file", imageinfo);
+    } catch (error) {
+      console.log("Exception %s while reading and parsing %s file", error, imageinfo);
+      client.close();
       return;
     }
-    
-    for (let [collection, data] of imageinfodatas) {
+     
+    for (let [collection, data] of Object.entries(imageinfodatas)) {
       let existed = false;
-      for (let existed of collectionList) {
-        if (existed.name === collection) {
+
+      console.log('Current collection => ');
+      for (let existedcollection of collectionList.cursor.firstBatch) {
+        console.log(existedcollection);
+        await targetDB
+            .collection(existedcollection.name)
+            .find()
+            .forEach(item => console.log(item));
+        if (existedcollection.name === collection) {
           existed = true;
+          break;
         }
       }
+    
+
       if (!existed) {
         console.log('Creating collection ' + collection);
         await targetDB.createCollection(collection);
       }
-      await targetDB
-          .collection(collection)
-          .insertMany(data);
+      
+      for (let item of data) {
+        await new Promise(resolve => targetDB.collection(collection)
+            .find({ version: item.version})
+            .count(
+                true,
+                {limit:1}, 
+                (error, count) => {
+                  if (error) {
+                    resolve();
+                    return;
+                  }
+                  
+                  if (count == 0) {
+                    console.log('insert %s!', item);
+                    new Promise(insertResolve => {
+                      targetDB
+                        .collection(collection)
+                        .insertOne(item);
+                      insertResolve();
+                      resolve();
+                    });
+                  } else {
+                    console.log('Item to isert');
+                    console.log('%s alredy exist!', item);
+                    resolve();
+                  }
+                }
+            )
+        );
+      }
     }
 
     console.log('All Done');
@@ -112,6 +151,19 @@ MongoClient.connect(
     
     console.log('Updated List of DB => ');
     console.log(dbList);
+
+    collectionList = await targetDB.command(
+        { listCollections: 1 }
+    )
+
+    console.log('Updated collection => ');
+    for (let existedcollection of collectionList.cursor.firstBatch) {
+      console.log(existedcollection);
+      await targetDB
+          .collection(existedcollection.name)
+          .find()
+          .forEach(item => console.log(item));
+    }
 
     client.close();
   }
