@@ -16,20 +16,25 @@ cd $absolute_path$APP_DIR
 
 function showUsage {
   echo "usage: " $(echo $0 | grep -E -o '[^\/]+$') "[option]"
-  echo "  option : d   run as daemon"
+  echo "  option : nopm   no process manager. run using npm directly"
+  echo "  option : nodbi   don't init db"
 }
 
-run_as_daemon=
+run_as_daemon=0
+init_db=1
 
 function checkOption {
   for option in "$@"
   do
     echo process option $option
-    if [[ $option == "d" ]]
+    if [[ $option == "nopm" ]]
     then
       run_as_daemon=1
+    elif [[ $option == "nodbi" ]]
+    then
+      init_db=0
     else
-     showUsage
+      showUsage
       exit
     fi
   done
@@ -41,4 +46,18 @@ then
   checkOption $@
 fi
 
-slc start 
+if [ $init_db -eq 1 ]
+then
+echo "Init data base"
+cd tools
+./initmogodb.sh ii=../../data/initial_db_data/imagemeta.json ht=127.0.0.1 pt=27017 db=imageMeta
+cd ..
+fi
+
+
+if [ $run_as_daemon -eq 1 ]
+then
+  nohup npm start&
+else
+  slc start 
+fi
