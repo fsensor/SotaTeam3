@@ -6,10 +6,19 @@
 # then in your browser, visit:
 #    https://localhost:4443
 
-import BaseHTTPServer, SimpleHTTPServer
+import http.server
 import ssl
 
-httpd = BaseHTTPServer.HTTPServer(('192.168.0.4', 443), SimpleHTTPServer.SimpleHTTPRequestHandler)
+key_dir = "/home/pi/sota/SotaTeam3/keys/"
+master_cerfile_name = key_dir+'Mastercert/MasterCert.pem'
+master_keyfile_name = key_dir+'Mastercert/MasterPriv.pem'
+master_chain_name = key_dir+'Mastercert/MasterChain.pem'
+server_cerfile_name = key_dir+'ServerCert/ServerCert.pem'
+server_keyfile_name = key_dir+'ServerCert/ServerPriv.pem'
+server_chain_name = key_dir+'ServerCert/ServerChain.pem'
+
+
+httpd = http.server.HTTPServer(('localhost', 33341), http.server.SimpleHTTPRequestHandler)
 #httpd.socket = ssl.wrap_socket (httpd.socket, certfile='/home/pi/python_test/server.pem', server_side=True)
-httpd.socket = ssl.wrap_socket (httpd.socket, certfile='test.crt', keyfile='test.key', server_side=True)
+httpd.socket = ssl.wrap_socket (httpd.socket, cert_reqs=ssl.CERT_REQUIRED, ca_certs=master_chain_name, certfile=server_cerfile_name, keyfile=server_keyfile_name, server_side=True)
 httpd.serve_forever()
