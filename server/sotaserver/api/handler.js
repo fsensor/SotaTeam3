@@ -67,7 +67,7 @@ function getLatestImage(onResult) {
 	if (typeof onResult === 'function') {
 		db.getImageMetas((errorcode, meta) => {
 			if (ERROR_CODES.IsNoError(errorcode)) {
-        let path = getLatestVersion(meta);
+        let path = getLatestPath(meta);
 
         if (path === null) {
 				  asynccaller.call(onResult, ERROR_CODES.ERR_INTERNAL_ERROR, null);
