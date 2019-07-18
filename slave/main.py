@@ -276,7 +276,6 @@ def main():
     print (server_version)
     print ("current version ")
     print (current_version)
-    server_version = 2
     if server_version > current_version:
       ret = image_down()
       if ret == False:
