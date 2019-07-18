@@ -288,7 +288,7 @@ def main():
   while True:
     time.sleep(5)
     print ("i'm alive")
-    #ret = get_version_to_server()
+    ret = get_version_to_server()
     ret = True
     if ret == False:
       print ("connection failed")
@@ -297,10 +297,10 @@ def main():
     print (server_version)
     print ("current version ")
     print (current_version)
-    if ret == True or int(server_version) > int(current_version):
-      #image_down()
+    if ret == True and int(server_version) > int(current_version):
+      image_down()
       #sign_image("./msg.bin")
-      read_local_image()
+      #read_local_image()
       ret = firmware_update()
     else :
       continue
