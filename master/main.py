@@ -271,7 +271,7 @@ def https_connection(url, data):
 
 def slave1_connection():
   global master_addr
-  httpsd = http.server.HTTPServer((master_addr, 33341), http.server.SimpleHTTPRequestHandler)
+  httpsd = http.server.HTTPServer((master_addr, 33342), http.server.SimpleHTTPRequestHandler)
   httpsd.socket = ssl.wrap_socket (httpsd.socket, cert_reqs=ssl.CERT_REQUIRED, ca_certs=slave1_chain_name, certfile=master_cerfile_name, keyfile=master_keyfile_name, server_side=True)
   thread = threading.Thread(target = httpsd.serve_forever)
   thread.daemon = True
@@ -290,7 +290,7 @@ def slave1_connection():
 
 def slave2_connection():
   global master_addr
-  httpsd = http.server.HTTPServer((master_addr, 33342), http.server.SimpleHTTPRequestHandler)
+  httpsd = http.server.HTTPServer((master_addr, 33343), http.server.SimpleHTTPRequestHandler)
   httpsd.socket = ssl.wrap_socket (httpsd.socket, cert_reqs=ssl.CERT_REQUIRED, ca_certs=slave2_chain_name, certfile=master_cerfile_name, keyfile=master_keyfile_name, server_side=True)
   thread = threading.Thread(target = httpsd.serve_forever)
   thread.daemon = True
