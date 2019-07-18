@@ -148,10 +148,13 @@ def firmware_update():
       f.seek(0,2)
       img_len = f.tell()
       f.seek(0)
+      if img_len <= LGE_RSASIGN_SIZE:
+          print("update image file too short! ", img_len, "bytes")
+          return False
       msg = f.read(img_len-LGE_RSASIGN_SIZE)
       sig = f.read(LGE_RSASIGN_SIZE)
 
-      dgst = SHA256.new(str(msg).encode('utf-8')).digest()
+
       f.close()
   if (verify_signature(cert, sig, msg)):
       print ("verify ok")
