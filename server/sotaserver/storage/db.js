@@ -58,7 +58,7 @@ function getKeyByType(onResult, type) {
       (err, meta) => {
         let key = null;
         if (!err) {
-          key=fs.readFileSync(meta[0][type]);
+          key = fs.readFileSync(meta[0][type]);
         }
         asynccaller.call(
             () => {
@@ -154,7 +154,7 @@ db.once('open', function(){
 });
 
 mongoose.connect(
-    'mongodb://localhost:' + dbport + '/' + dbname,
+    'mongodb://sotaTeam3:team3@localhost:' + dbport + '/' + dbname,
     { useNewUrlParser: true }
 );
 

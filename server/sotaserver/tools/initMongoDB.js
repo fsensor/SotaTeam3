@@ -77,11 +77,40 @@ MongoClient.connect(
     
     console.log('(Create and) Add data to %s database', dbName);
     let targetDB = client.db(dbName);
+    
+    // Everytime try to add user
+    await targetDB.addUser(
+      "sotaTeam3",
+      "team3",
+      { roles: [ { role: "dbOwner", db: "mongodb_imageMeta" }, "readWrite" ] },
+      (error, result) => { 
+        console.log("Add user error msg : " + error);
+        console.log("Add user result msg : " + result);
+      }
+    );
+
     let collectionList = await targetDB.command(
         { listCollections: 1 }
     );
     let imageinfodatas;
+    let init = false; 
+
+    if (imageinfo === 'init') {
+      init = true; 
+    }
     
+    if (init) {
+      console.log("init db [%s]", dbName);
+      for (let collection of collectionList.cursor.firstBatch) {
+        if (collection.name === 'imageMeta') {
+          console.log('Drop existing collection [%s]', collection.name);
+          await targetDB.dropCollection(collection.name);  
+          break;
+        }
+      }
+      client.close();
+      return;
+    }
 
     try { 
       imageinfodatas = JSON.parse(fs.readFileSync(imageinfo));
