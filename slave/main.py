@@ -21,7 +21,6 @@ from Crypto.Hash import SHA256
 import time
 server_url="https://192.168.0.4:33341/"
 master_addr="192.168.0.4"
-tmp_current_imgfile_name = "sample_data_file"
 
 current_imgfile_name = "sample_data_file.signed"
 version_file_name = "version.signed"
@@ -42,11 +41,14 @@ slave2_cerfile_name = key_dir+'./Slave2Cert/Slave2Cert.pem'
 slave2_keyfile_name = key_dir+'./Slave2Cert/Slave2Priv.pem'
 slave2_chain_name = key_dir+'./Slave2Cert/Slave2Chain.pem'
 
+slave1_device_id = '00000000509d3b6b'
+slave2_device_id = '000000002e9e3403'
+
 #server data
 server_version = 0
 version_sig = ''
 
-server_file_name = "sample_data_file_server"
+server_file_name = "img.signed"
 server_file_name_signed = "sample_data_file_server.signed"
 #image structure
 current_magic = ''
@@ -114,12 +116,8 @@ def read_current_image():
         f.close()
 
     current_version = current_version[0]
-#    print (current_magic)
-#    print (current_version)
-#    print (current_body_len[0])
-#    print (current_body)
-#    print (len(current_sig))
-#    print (current_sig.hex())
+    os.system('cat ' + current_imgfile_name)
+
     return True
   except:
     return False
@@ -152,7 +150,6 @@ def firmware_update():
       f.seek(0)
       msg = f.read(img_len-LGE_RSASIGN_SIZE)
       sig = f.read(LGE_RSASIGN_SIZE)
-      print(msg)
 
       dgst = SHA256.new(str(msg).encode('utf-8')).digest()
       f.close()
@@ -164,7 +161,8 @@ def firmware_update():
   print ("change")
   os.remove(current_imgfile_name)
   os.rename(server_file_name_signed, current_imgfile_name)
-  return True
+  print("end firmware update")
+  return read_current_image()
 
 #----------------------------------------------------------------------------
 # image_down SCRIPT BEGIN
@@ -174,7 +172,6 @@ def image_down():
   print ("image_down")
   global server_file_name_signed
   global server_file_name
-#temp code, Local data needs to be changed to server data.
   print(server_file_name)
   print(server_file_name_signed)
   try:
@@ -187,7 +184,6 @@ def image_down():
   except:
     print("image down fail")
     return False
-#does it need to error handling?
 
 #----------------------------------------------------------------------------
 # VERSION Verify
@@ -212,6 +208,7 @@ def version_verify():
     cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
     f.close()
   if verify_signature(cert, b_sig, j_version)is False :
+      server_version = 0
       return False
   else :
       server_version =  (int(j_version.replace(".","")))
@@ -228,7 +225,7 @@ def get_version_to_master():
     content = server_file_response.read()
     with open(version_file_name, "wb") as f:
       f.write(content)
-    f.close()
+      f.close()
     return True
   except : 
     print("get_version_download_fail")
@@ -239,14 +236,50 @@ def get_version_to_master():
 #----------------------------------------------------------------------------
 
 def https_connection(url, data):
+  deviceid = getserial()
+  certfile_name = ''
+  keyfile_name = ''
+#slave1_device_id = '00000000509d3b6b'
+#slave2_device_id = '000000002e9e3403'
+  if deviceid == slave1_device_id:
+      certfile_name = slave1_cerfile_name
+      keyfile_name = slave1_keyfile_name
+  elif deviceid == slave2_device_id:
+      certfile_name = slave2_cerfile_name
+      keyfile_name = slave2_keyfile_name
+  else : 
+      print("device id not matched")
+      return False
+  print (certfile_name)
+  print(keyfile_name)
+
   context = ssl.SSLContext(ssl.PROTOCOL_TLS)
   context.verify_mode = ssl.CERT_REQUIRED
   context.check_hostname = False #This is check for DNSNAME
   context.load_verify_locations(server_chain_name) #certificate file
-  context.load_cert_chain(certfile=slave1_cerfile_name, keyfile=slave1_keyfile_name)
+  context.load_cert_chain(certfile=certfile_name, keyfile=keyfile_name)
   print (url+data)
   response = urlopen(url+data, context=context)
   return response
+
+#----------------------------------------------------------------------------
+# getserial 
+#----------------------------------------------------------------------------
+
+def getserial():
+  # Extract serial from cpuinfo file
+  print("getserial")
+  cpuserial = "0000000000000000"
+  try:
+    f = open('/proc/cpuinfo','r')
+    for line in f:
+      if line[0:6]=='Serial':
+        cpuserial = line[10:26]
+    f.close()
+  except:
+    cpuserial = "ERROR000000000"
+
+  return cpuserial
 
 #----------------------------------------------------------------------------
 # MAIN SCRIPT BEGIN
@@ -255,8 +288,6 @@ def https_connection(url, data):
 def main():
   global current_version
   global server_version
-  global tmp_current_imgfile_name #sample_data_file - no signed
-  sign_image("sample_data_file_server_nosigned")
   ret = False
   ret = read_current_image()
   if ret == False:
@@ -264,6 +295,7 @@ def main():
   while True:
     time.sleep(5)
     print ("i'm alive")
+
     ret = get_version_to_master()
     if ret == False:
       print ("connection failed")
@@ -285,7 +317,6 @@ def main():
         continue
       else :
         print ("change current version")
-        current_version = server_version
         server_version = 0
         print ("server version ")
         print (server_version)
