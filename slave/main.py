@@ -25,7 +25,7 @@ master_addr="192.168.0.4"
 current_imgfile_name = "sample_data_file.signed"
 version_file_name = "version.signed"
 
-key_dir = "/home/pi/sota/SotaTeam3_0718/keys/"
+key_dir = "/home/pi/sota/SotaTeam3/keys/"
 keyfile_name = key_dir+"./SigningServer/SignPriv.pem"
 cerfile_name = key_dir+"./SigningServer/SignCert.pem"
 master_cerfile_name = key_dir+'./Mastercert/MasterCert.pem'
