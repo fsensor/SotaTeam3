@@ -1,0 +1,36 @@
+{
+    "imageMeta": [
+        {
+            "version": "00.00.02",
+            "path": "ROOT_PATH/image/baozou.signed",
+            "type": "formatType1",
+            "date": "Thu, 18 Jul 2019 06:14:54 GMT"  
+        },
+        {
+            "version": "00.62.58",
+            "path": "ROOT_PATH/image/lufei.signed",
+            "type": "formatType1",
+            "date": "Thu, 18 Jul 2019 06:16:21 GMT"  
+        },
+        {
+            "version": "00.03.04",
+            "path": "ROOT_PATH/image/pikaqiu.signed",
+            "type": "formatType1",
+            "date": "Thu, 18 Jul 2019 06:15:11 GMT"  
+        }
+
+
+    ],
+    "certificate": [
+        {
+            "cert": "ROOT_PATH/certificate/cert.pem",
+            "key": "ROOT_PATH/certificate/key.pem",
+            "cacert": "ROOT_PATH/certificate/CACert.pem"
+        }
+    ],
+    "fingerprint": [
+        {
+            "value": "AE:EB:A5:DF:22:24:FA:05:4B:05:27:CE:DD:45:21:DF:0E:92:69:32:E3:C3:66:47:61:25:C7:C1:F2:5B:CF:3E"
+        }
+    ]
+}

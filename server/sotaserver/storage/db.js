@@ -11,7 +11,7 @@ const ImageMeta = require('../models/imageMeta');
 
 // CONNECT TO MONGODB SERVER
 var dbname='sotares';
-var dbport='27017';
+var dbport='30718';
 
 let cmdLineOptions = process.argv.slice(2);
 

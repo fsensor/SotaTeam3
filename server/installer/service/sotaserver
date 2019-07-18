@@ -1,0 +1,18 @@
+[Unit]
+Description=Sota Server
+After=mongod.service
+
+[Service]
+#User=sotaserver
+#Group=sotagroup
+ExecStart=NODE_BIN_PATH/node SOTA_SERVER_BIN_PATH/www
+ExecStartPre=/bin/mkdir -p RUN_PATH/sotaserver
+ExecStartPre=/bin/chown sotaserver:sotagroup RUN_PATH/sotaserver
+ExecStartPre=/bin/chmod 0740 RUN_PATH/sotaserver
+PermissionsStartOnly=true
+PIDFile=RUN_PATH/sotaserver/sotaserver.pid
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

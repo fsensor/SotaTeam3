@@ -1,0 +1,38 @@
+[Unit]
+Description=MongoDB Database Server
+After=multi-user.target
+Documentation=https://docs.mongodb.org/manual
+
+[Service]
+#User=dbadmin
+#Group=sotagroup
+Environment="OPTIONS=-f MONGOD_CONF_PATH/mongod.conf"
+ExecStart=MONGOD_BIN_PATH/mongod $OPTIONS
+ExecStartPre=/bin/mkdir -p RUN_PATH/mongodb
+ExecStartPre=/bin/chown dbadmin:sotagroup RUN_PATH/mongodb
+ExecStartPre=/bin/chmod 0755 RUN_PATH/mongodb
+PIDFile=RUN_PATH/mongodb/mongod.pid
+PermissionsStartOnly=true
+Restart=on-failure
+Type=forking
+# file size
+LimitFSIZE=infinity
+# cpu time
+LimitCPU=infinity
+# virtual memory size
+LimitAS=infinity
+# open files
+LimitNOFILE=64000
+# processes/threads
+LimitNPROC=64000
+# locked memory
+LimitMEMLOCK=infinity
+# total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+# Recommended limits for for mongod as specified in
+# http://docs.mongodb.org/manual/reference/ulimit/#recommended-settings
+
+[Install]
+WantedBy=multi-user.target
+
