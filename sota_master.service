@@ -1,0 +1,11 @@
+[Unit]
+Description=Master
+After=multi-user.target
+ 
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/sota/SotaTeam3/master/main.py
+Restart=on-failure
+ 
+[Install]
+WantedBy=multi-user.target
