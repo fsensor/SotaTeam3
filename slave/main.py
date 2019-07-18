@@ -57,7 +57,7 @@ current_sig = ''
 
 LGE_METADATA_HDR_MAGIC  = '\x4C\x47\x45\x31' # 'LGE!'
 LGE_SHA256_SIZE   = 32
-LGE_RSASIGN_SIZE  = 256
+LGE_RSASIGN_SIZE  = 512
 
 #----------------------------------------------------------------------------
 # Sign image
@@ -72,17 +72,15 @@ def sign_image(img_name):
       f.seek(0)
       img_data = f.read(imgfile_size)
       f.close()
-  img_hash = SHA256.new(str(img_data).encode('utf-8')).digest()
 
   # sign with private RSA key
   with open(keyfile_name, 'rb+') as f:
       pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
 
-  rsa_sign = crypto.sign(pkey, img_hash, 'sha256')
-
+  rsa_sign = crypto.sign(pkey, img_data, 'sha256')
+  print(rsa_sign)
   # write signed boot image
-  tmp = img_name + '.signed'
-  with open(tmp, 'wb') as f:
+  with open(server_file_name_signed, 'wb') as f:
       f.write(img_data)
       f.write(rsa_sign)
       f.close()
@@ -116,12 +114,12 @@ def read_current_image():
         f.close()
 
     current_version = current_version[0]
-    print (current_magic)
-    print (current_version)
-    print (current_body_len[0])
-    print (current_body)
-    print (len(current_sig))
-    print (current_sig.hex())
+#    print (current_magic)
+#    print (current_version)
+#    print (current_body_len[0])
+#    print (current_body)
+#    print (len(current_sig))
+#    print (current_sig.hex())
     return True
   except:
     return False
@@ -164,7 +162,6 @@ def firmware_update():
       print ("verify ng")
       return False
   print ("change")
-  exit(1)
   os.remove(current_imgfile_name)
   os.rename(server_file_name_signed, current_imgfile_name)
   return True
@@ -259,6 +256,7 @@ def main():
   global current_version
   global server_version
   global tmp_current_imgfile_name #sample_data_file - no signed
+  sign_image("sample_data_file_server_nosigned")
   ret = False
   ret = read_current_image()
   if ret == False:
@@ -278,6 +276,7 @@ def main():
     print (server_version)
     print ("current version ")
     print (current_version)
+    server_version = 2
     if server_version > current_version:
       ret = image_down()
       if ret == False:
