@@ -71,8 +71,9 @@ def sign_image(img_name):
   with open(img_name, 'rb') as f:
       f.seek(0, 2)
       imgfile_size = f.tell()
-      f.seek(0);
+      f.seek(0)
       img_data = f.read(imgfile_size)
+      f.close()
 
   # sign with private RSA key
   with open(keyfile_name, 'rb+') as f:
@@ -97,31 +98,29 @@ def read_current_image():
   global current_imgfile_name
 
   print ("read_current_image")
-  print (current_imgfile_name)
-  with open(current_imgfile_name, 'rb') as f:
-      f.seek(0, 2)
-      imgfile_size = f.tell()  
-      f.seek(0);
-      img_data = f.read(imgfile_size)
-      f.seek(0)
-      current_magic = f.read(4)
-      tmp = f.read(4)
-      current_version = struct.unpack('i', tmp)
-      tmp = f.read(4)
-      current_body_len = struct.unpack('i', tmp)
-      current_body = f.read(current_body_len[0])
-      f.seek(imgfile_size-LGE_RSASIGN_SIZE)
-      current_sig = f.read(LGE_RSASIGN_SIZE)
+  try:
+    with open(current_imgfile_name, 'rb') as f:
+        f.seek(0, 2)
+        imgfile_size = f.tell()  
+        f.seek(0)
+        img_data = f.read(imgfile_size)
+        f.seek(0)
+        current_magic = f.read(4)
+        tmp = f.read(4)
+        current_version = struct.unpack('i', tmp)
+        tmp = f.read(4)
+        current_body_len = struct.unpack('i', tmp)
+        current_body = f.read(current_body_len[0])
+        f.seek(imgfile_size-LGE_RSASIGN_SIZE)
+        current_sig = f.read(LGE_RSASIGN_SIZE)
+        f.close()
 
-  print ("magic: ", current_magic)
-  print ("version: ", current_version[0])
-  current_version = current_version[0]
-  print ("body length: ", current_body_len[0])
-  #print (binascii.unhexlify(current_body))
-  print ("sig length: ", len(current_sig))
-  print ("sig type: ", type(current_sig))
-  print ("sig: ", current_sig.hex())
-#sig = f.read(imgfile_size-)
+    current_version = current_version[0]
+    os.system('cat ' + current_imgfile_name)
+
+    return True
+  except:
+    return False
 
 def verify_signature(cert, sig, dgst):
     try:
@@ -141,21 +140,25 @@ def firmware_update():
   global server_file_name_signed
   global current_imgfile_name
   print ("firmware update")
-  
+  print (cerfile_name) 
   with open(cerfile_name, 'rb+') as f:
     cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+    f.close()
+  print(server_file_name_signed)
+
   with open(server_file_name_signed, 'rb+') as f:
   #with open("msg.bin.signed", 'rb+') as f:
-      f.seek(0,2)
-      img_len = f.tell()
-      f.seek(0)
-      if img_len <= LGE_RSASIGN_SIZE:
-          print("update image file too short! ", img_len, "bytes")
-          return False
-      msg = f.read(img_len-LGE_RSASIGN_SIZE)
-      sig = f.read(LGE_RSASIGN_SIZE)
+    f.seek(0,2)
+    img_len = f.tell()
+    f.seek(0)
+    if img_len <= LGE_RSASIGN_SIZE:
+      print("update image file too short! ", img_len, "bytes")
+      return False
+    msg = f.read(img_len-LGE_RSASIGN_SIZE)
+    sig = f.read(LGE_RSASIGN_SIZE)
+    f.close()
 #      dgst = SHA256.new(str(msg).encode('utf-8')).digest()
-      print("sig: ", sig)
+    print("sig: ", sig)
 #      print("msg: ", msg)
 #  with open("./sig.bin", 'wb') as f:
 #      f.write(sig)
@@ -179,7 +182,8 @@ def firmware_update():
 
   os.remove(current_imgfile_name)
   os.rename(server_file_name_signed, current_imgfile_name)
-  return True
+  print("end firmware update")
+  return read_current_image()
 
 def read_local_image():
     print("read local image")
@@ -194,15 +198,20 @@ def read_local_image():
 def image_down():
   print ("image_down")
   global server_file_name_signed
-  server_file_response = https_connection(server_url, "GetLatestImage")
-  if server_file_response is False:
+  try:
+    server_file_response = https_connection(server_url, "GetLatestImage")
+    if server_file_response is False:
       return False
-  content = json.loads(server_file_response)
-  content = base64.b64decode(content)
+    content = json.loads(server_file_response)
+    content = base64.b64decode(content)
 #  print("content: ", content)
-  f = open(server_file_name_signed, "wb") #sample_data_file_server.signed
-  f.write(content)
-  f.close()
+    f = open(server_file_name_signed, "wb") #sample_data_file_server.signed
+    f.write(content)
+    f.close()
+    return True
+  except:
+    print("image down fail")
+    return False
 #does it need to error handling?
 
 #----------------------------------------------------------------------------
@@ -229,6 +238,7 @@ def get_version_to_server():
       print ("verify ok")
       return True
   else:
+      server_version = 0
       print ("verify ng")
       return False
 
@@ -259,18 +269,37 @@ def https_connection(url, data):
 # Slave CONNECTION
 #----------------------------------------------------------------------------
 
-def slave_connection():
+def slave1_connection():
   global master_addr
-  httpsd = http.server.HTTPServer((master_addr, 33341), http.server.SimpleHTTPRequestHandler)
+  httpsd = http.server.HTTPServer((master_addr, 33342), http.server.SimpleHTTPRequestHandler)
   httpsd.socket = ssl.wrap_socket (httpsd.socket, cert_reqs=ssl.CERT_REQUIRED, ca_certs=slave1_chain_name, certfile=master_cerfile_name, keyfile=master_keyfile_name, server_side=True)
   thread = threading.Thread(target = httpsd.serve_forever)
   thread.daemon = True
 
   try:
     thread.start()
-    print ("slave connection thread start")
+    print ("slave1 connection thread start")
   except:
-    print ("slave connection thread error")
+    print ("slave1 connection thread error")
+    httpsd.shutdown()
+    sys.exit()
+
+#----------------------------------------------------------------------------
+# Slave CONNECTION
+#----------------------------------------------------------------------------
+
+def slave2_connection():
+  global master_addr
+  httpsd = http.server.HTTPServer((master_addr, 33343), http.server.SimpleHTTPRequestHandler)
+  httpsd.socket = ssl.wrap_socket (httpsd.socket, cert_reqs=ssl.CERT_REQUIRED, ca_certs=slave2_chain_name, certfile=master_cerfile_name, keyfile=master_keyfile_name, server_side=True)
+  thread = threading.Thread(target = httpsd.serve_forever)
+  thread.daemon = True
+
+  try:
+    thread.start()
+    print ("slave2 connection thread start")
+  except:
+    print ("slave2 connection thread error")
     httpsd.shutdown()
     sys.exit()
 
@@ -281,37 +310,37 @@ def slave_connection():
 def main():
   global current_version
   global server_version
-#  global tmp_current_imgfile_name #sample_data_file - no signed
-#  sign_image(tmp_current_imgfile_name)
-  read_current_image()
-  slave_connection()
+  ret = False
+  ret = read_current_image()
+  if ret == False:
+    print("no such file")
+  slave1_connection()
   while True:
     time.sleep(5)
     print ("i'm alive")
     ret = get_version_to_server()
-    ret = True
     if ret == False:
       print ("connection failed")
       continue
-    print ("server version ")
-    print (server_version)
-    print ("current version ")
-    print (current_version)
-    if ret == True and int(server_version) > int(current_version):
-      image_down()
+    print ("server version ",  server_version)
+    print ("current version ", current_version)
+    if int(server_version) > int(current_version):
+      ret = image_down()
+      if ret == False:
+        continue
       #sign_image("./msg.bin")
-      #read_local_image()
+#      read_local_image()
       ret = firmware_update()
+      if ret == False:
+        continue
     else :
       continue
     if ret == True:
       print ("change current version")
       current_version = server_version
       server_version = 0
-      print ("server version ")
-      print (server_version)
-      print ("current version ")
-      print (current_version)
+      print ("server version ", server_version)
+      print ("current version ", current_version)
     else : 
       continue
   sys.exit()

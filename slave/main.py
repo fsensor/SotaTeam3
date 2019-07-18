@@ -19,7 +19,9 @@ from subprocess import PIPE
 from OpenSSL import crypto
 from Crypto.Hash import SHA256
 import time
-server_url="https://192.168.0.4:33341/"
+server_url=""
+slave1_url="https://192.168.0.4:33342/"
+slave2_url="https://192.168.0.4:33343/"
 master_addr="192.168.0.4"
 
 current_imgfile_name = "sample_data_file.signed"
@@ -247,9 +249,11 @@ def https_connection(url, data):
   if deviceid == slave1_device_id:
       certfile_name = slave1_cerfile_name
       keyfile_name = slave1_keyfile_name
+      url = slave1_url
   elif deviceid == slave2_device_id:
       certfile_name = slave2_cerfile_name
       keyfile_name = slave2_keyfile_name
+      url = slave2_url
   else : 
       print("device id not matched")
       return False
