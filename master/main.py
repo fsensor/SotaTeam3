@@ -315,6 +315,7 @@ def main():
   if ret == False:
     print("no such file")
   slave1_connection()
+  slave2_connection()
   while True:
     time.sleep(5)
     print ("i'm alive")
