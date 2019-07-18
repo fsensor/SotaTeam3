@@ -161,6 +161,10 @@ do
   rm -rf $dst/$dir
 done
 
+mv $dst/sotaserver/common/baselogger.js $dst/sotaserver/common/baselogger.in
+sed -E "{s#realConsole.log\(Date.now\(\)#//realConsole.log\(Date.now\(\)#}" $dst/sotaserver/common/baselogger.in > $dst/sotaserver/common/baselogger.js
+rm -f 
+
 # set owner of sota application
 chown -R $sotaserver:$sotagroup $dst
 chmod -R 550 $dst
@@ -223,7 +227,7 @@ chmod -R 550 $dst/service
 chown -R $stoaserver:$sotagroup $dst/run
 chmod -R 770 $dst/run
 
-rm -rf $absolute_path/installer/temp
+rm -rf $absolute_path/temp
 
 echo 
 
