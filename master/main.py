@@ -25,8 +25,9 @@ import time
 server_url="https://localhost:33341/"
 master_addr="192.168.0.4"
 tmp_current_imgfile_name = "sample_data_file"
-
 current_imgfile_name = "sample_data_file.signed"
+version_file_name = "version.signed"
+
 key_dir = "/home/pi/sota/SotaTeam3/keys/"
 keyfile_name = key_dir+"./SigningServer/SignPriv.pem"
 cerfile_name = key_dir+"./SigningServer/SignPub.pem"
@@ -203,7 +204,11 @@ def https_connection(url, data):
   context.load_cert_chain(certfile=master_cerfile_name, keyfile=master_keyfile_name)
   print (url+data)
   response = urlopen(url+data, context=context)
-  return response
+  byte_data = response.read()
+  with open(version_file_name, "wb") as f:
+    f.write(byte_data)
+  text_data = byte_data.decode('utf-8')
+  return text_data
 
 #----------------------------------------------------------------------------
 # Slave CONNECTION
