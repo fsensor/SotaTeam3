@@ -227,8 +227,6 @@ chmod -R 550 $dst/service
 chown -R $stoaserver:$sotagroup $dst/run
 chmod -R 770 $dst/run
 
-rm -rf $absolute_path/temp
-
 echo 
 
 # start service
@@ -250,6 +248,8 @@ export PATH=$absolute_path../$nodedir/bin:$PATH
 ./initmogodb.sh ii=$absolute_path/temp/imagemeta.json ht=127.0.0.1 pt=30718 db=sotares
 export PATH=$backuppath
 cd -
+
+rm -rf $absolute_path/temp
 
 echo "All done. Now you can invoke start_server.sh to run sota server!!"
 

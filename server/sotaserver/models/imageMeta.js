@@ -10,7 +10,7 @@ const version = mongoose.model('version', new Schema(
     },
     {
         _id: false,
-        collection: "versionInfo"
+        collection: "imageMeta"
     }
 ));
 
