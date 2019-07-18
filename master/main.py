@@ -24,9 +24,10 @@ import binascii
 
 server_url="https://192.168.0.10:33341/"
 #server_url="https://localhost:33341/"
-master_addr="178.5.1.1"
+#master_addr="178.5.1.1"
+master_addr="192.168.0.4"
 tmp_current_imgfile_name = "sample_data_file"
-current_imgfile_name = "sample_data_file.signed"
+current_imgfile_name = "img.signed"
 version_file_name = "version.signed"
 
 key_dir = "../keys/"
@@ -48,7 +49,7 @@ slave2_chain_name = key_dir+'./Slave2Cert/Slave2Chain.pem'
 #server data
 server_version = 0
 server_file_name = "sample_data_file_server"
-server_file_name_signed = "sample_data_file_server.signed"
+server_file_name_signed = "update_img.signed"
 #image structure
 current_magic = ''
 current_version = '0'
@@ -112,14 +113,14 @@ def read_current_image():
       f.seek(imgfile_size-LGE_RSASIGN_SIZE)
       current_sig = f.read(LGE_RSASIGN_SIZE)
 
-  print (current_magic)
-  print (current_version[0])
+  print ("magic: ", current_magic)
+  print ("version: ", current_version[0])
   current_version = current_version[0]
-  print (current_body_len[0])
-  print (current_body)
-  print (len(current_sig))
-  print (type(current_sig))
-  print (current_sig.hex())
+  print ("body length: ", current_body_len[0])
+  #print (binascii.unhexlify(current_body))
+  print ("sig length: ", len(current_sig))
+  print ("sig type: ", type(current_sig))
+  print ("sig: ", current_sig.hex())
 #sig = f.read(imgfile_size-)
 
 def verify_signature(cert, sig, dgst):
@@ -139,7 +140,7 @@ def verify_signature(cert, sig, dgst):
 def firmware_update():
   global server_file_name_signed
   global current_imgfile_name
-  print ("verify")
+  print ("firmware update")
   
   with open(cerfile_name, 'rb+') as f:
     cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
@@ -155,7 +156,7 @@ def firmware_update():
       sig = f.read(LGE_RSASIGN_SIZE)
 #      dgst = SHA256.new(str(msg).encode('utf-8')).digest()
       print("sig: ", sig)
-      print("msg: ", msg)
+#      print("msg: ", msg)
 #  with open("./sig.bin", 'wb') as f:
 #      f.write(sig)
 
@@ -180,6 +181,12 @@ def firmware_update():
   os.rename(server_file_name_signed, current_imgfile_name)
   return True
 
+def read_local_image():
+    print("read local image")
+    with open("./lufei.signed", 'rb') as f:
+        new = f.read()
+    with open(server_file_name_signed, 'wb') as f:
+        f.write(new)
 #----------------------------------------------------------------------------
 # image_down SCRIPT BEGIN
 #----------------------------------------------------------------------------
@@ -192,7 +199,7 @@ def image_down():
       return False
   content = json.loads(server_file_response)
   content = base64.b64decode(content)
-  print("content: ", content)
+#  print("content: ", content)
   f = open(server_file_name_signed, "wb") #sample_data_file_server.signed
   f.write(content)
   f.close()
@@ -209,7 +216,8 @@ def get_version_to_server():
   if server_file_response is False:
       return False
   content = json.loads(server_file_response)
-  server_version = content['version'][7]
+  server_version = (int(content['version'].replace(".","")))
+  print("get version: ", server_version)
   sig_bin = binascii.unhexlify(content['sign'])
 
   with open(server_cerfile_name, 'rb+') as f:
@@ -273,14 +281,15 @@ def slave_connection():
 def main():
   global current_version
   global server_version
-  global tmp_current_imgfile_name #sample_data_file - no signed
-  sign_image(tmp_current_imgfile_name)
+#  global tmp_current_imgfile_name #sample_data_file - no signed
+#  sign_image(tmp_current_imgfile_name)
   read_current_image()
   slave_connection()
   while True:
     time.sleep(5)
     print ("i'm alive")
-    ret = get_version_to_server()
+    #ret = get_version_to_server()
+    ret = True
     if ret == False:
       print ("connection failed")
       continue
@@ -288,9 +297,10 @@ def main():
     print (server_version)
     print ("current version ")
     print (current_version)
-    if ret == True and int(server_version) > int(current_version):
-      image_down()
+    if ret == True or int(server_version) > int(current_version):
+      #image_down()
       #sign_image("./msg.bin")
+      read_local_image()
       ret = firmware_update()
     else :
       continue
