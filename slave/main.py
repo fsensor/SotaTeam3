@@ -28,7 +28,7 @@ version_file_name = "version.signed"
 
 key_dir = "/home/pi/sota/SotaTeam3_0718/keys/"
 keyfile_name = key_dir+"./SigningServer/SignPriv.pem"
-cerfile_name = key_dir+"./SigningServer/SignPub.pem"
+cerfile_name = key_dir+"./SigningServer/SignCert.pem"
 master_cerfile_name = key_dir+'./Mastercert/MasterCert.pem'
 master_keyfile_name = key_dir+'./Mastercert/MasterPriv.pem'
 master_chain_name = key_dir+'./Mastercert/MasterChain.pem'
@@ -57,10 +57,10 @@ current_sig = ''
 
 LGE_METADATA_HDR_MAGIC  = '\x4C\x47\x45\x31' # 'LGE!'
 LGE_SHA256_SIZE   = 32
-LGE_RSASIGN_SIZE  = 256
+LGE_RSASIGN_SIZE  = 512
 
 #----------------------------------------------------------------------------
-# Sign boot image
+# Sign image
 #----------------------------------------------------------------------------
 def sign_image(img_name):
   # read image file
@@ -72,17 +72,15 @@ def sign_image(img_name):
       f.seek(0)
       img_data = f.read(imgfile_size)
       f.close()
-  img_hash = SHA256.new(str(img_data).encode('utf-8')).digest()
 
   # sign with private RSA key
   with open(keyfile_name, 'rb+') as f:
       pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
 
-  rsa_sign = crypto.sign(pkey, img_hash, 'sha256')
-
+  rsa_sign = crypto.sign(pkey, img_data, 'sha256')
+  print(rsa_sign)
   # write signed boot image
-  tmp = img_name + '.signed'
-  with open(tmp, 'wb') as f:
+  with open(server_file_name_signed, 'wb') as f:
       f.write(img_data)
       f.write(rsa_sign)
       f.close()
@@ -98,32 +96,33 @@ def read_current_image():
   global current_imgfile_name
 
   print ("read_current_image")
-  print (current_imgfile_name)
-  with open(current_imgfile_name, 'rb') as f:
-      f.seek(0, 2)
-      imgfile_size = f.tell()  
-      f.seek(0)
-      img_data = f.read(imgfile_size)
-      f.seek(0)
-      current_magic = f.read(4)
-      tmp = f.read(4)
-      current_version = struct.unpack('i', tmp)
-      tmp = f.read(4)
-      current_body_len = struct.unpack('i', tmp)
-      current_body = f.read(current_body_len[0])
-      f.seek(imgfile_size-LGE_RSASIGN_SIZE)
-      current_sig = f.read(LGE_RSASIGN_SIZE)
-      f.close()
+  try:
+    with open(current_imgfile_name, 'rb') as f:
+        f.seek(0, 2)
+        imgfile_size = f.tell()  
+        f.seek(0)
+        img_data = f.read(imgfile_size)
+        f.seek(0)
+        current_magic = f.read(4)
+        tmp = f.read(4)
+        current_version = struct.unpack('i', tmp)
+        tmp = f.read(4)
+        current_body_len = struct.unpack('i', tmp)
+        current_body = f.read(current_body_len[0])
+        f.seek(imgfile_size-LGE_RSASIGN_SIZE)
+        current_sig = f.read(LGE_RSASIGN_SIZE)
+        f.close()
 
-  print (current_magic)
-  print (current_version[0])
-  current_version = current_version[0]
-  print (current_body_len[0])
-  print (current_body)
-  print (len(current_sig))
-  print (type(current_sig))
-  print (current_sig.hex())
-#sig = f.read(imgfile_size-)
+    current_version = current_version[0]
+#    print (current_magic)
+#    print (current_version)
+#    print (current_body_len[0])
+#    print (current_body)
+#    print (len(current_sig))
+#    print (current_sig.hex())
+    return True
+  except:
+    return False
 
 def verify_signature(cert, sig, dgst):
     try:
@@ -153,15 +152,16 @@ def firmware_update():
       f.seek(0)
       msg = f.read(img_len-LGE_RSASIGN_SIZE)
       sig = f.read(LGE_RSASIGN_SIZE)
+      print(msg)
+
       dgst = SHA256.new(str(msg).encode('utf-8')).digest()
       f.close()
-  if (verify_signature(cert, sig, dgst)):
+  if (verify_signature(cert, sig, msg)):
       print ("verify ok")
   else:
       print ("verify ng")
       return False
   print ("change")
-
   os.remove(current_imgfile_name)
   os.rename(server_file_name_signed, current_imgfile_name)
   return True
@@ -172,14 +172,21 @@ def firmware_update():
 
 def image_down():
   print ("image_down")
-  global server_file_name_signedj
+  global server_file_name_signed
   global server_file_name
 #temp code, Local data needs to be changed to server data.
-  server_file_response = https_connection(server_url, server_file_name)
-  content = server_file_response.read()
-  f = open(server_file_name_signed, "w") #sample_data_file_server.signed
-  f.write(content)
-  f.close()
+  print(server_file_name)
+  print(server_file_name_signed)
+  try:
+    server_file_response = https_connection(server_url, server_file_name)
+    content = server_file_response.read()
+    f = open(server_file_name_signed, "wb") #sample_data_file_server.signed
+    f.write(content)
+    f.close()
+    return True
+  except:
+    print("image down fail")
+    return False
 #does it need to error handling?
 
 #----------------------------------------------------------------------------
@@ -216,12 +223,17 @@ def version_verify():
 
 def get_version_to_master():
   global server_version
-  server_file_response = https_connection(server_url, version_file_name)
-  content = server_file_response.read()
-  with open(version_file_name, "wb") as f:
-    f.write(content)
-  f.close()
-#  version_verify()
+  try:
+    server_file_response = https_connection(server_url, version_file_name)
+    content = server_file_response.read()
+    with open(version_file_name, "wb") as f:
+      f.write(content)
+    f.close()
+    return True
+  except : 
+    print("get_version_download_fail")
+    return False
+
 #----------------------------------------------------------------------------
 # HTTPS CONNECTION
 #----------------------------------------------------------------------------
@@ -244,8 +256,11 @@ def main():
   global current_version
   global server_version
   global tmp_current_imgfile_name #sample_data_file - no signed
-  sign_image(tmp_current_imgfile_name)
-  read_current_image()
+  sign_image("sample_data_file_server_nosigned")
+  ret = False
+  ret = read_current_image()
+  if ret == False:
+    print("no such file")
   while True:
     time.sleep(5)
     print ("i'm alive")
@@ -261,20 +276,21 @@ def main():
     print (server_version)
     print ("current version ")
     print (current_version)
-    if ret == True and server_version > current_version:
-      image_down()
+    if server_version > current_version:
+      ret = image_down()
+      if ret == False:
+        continue
       ret = firmware_update()
-#      exit(1)
-    else :
-      continue
-    if ret == True:
-      print ("change current version")
-      current_version = server_version
-      server_version = 0
-      print ("server version ")
-      print (server_version)
-      print ("current version ")
-      print (current_version)
+      if ret == False:
+        continue
+      else :
+        print ("change current version")
+        current_version = server_version
+        server_version = 0
+        print ("server version ")
+        print (server_version)
+        print ("current version ")
+        print (current_version)
     else : 
       continue
   sys.exit()

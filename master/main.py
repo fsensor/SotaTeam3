@@ -8,7 +8,6 @@ import datetime
 import hashlib
 
 import ssl
-from twisted.internet.ssl import TLSVersion
 import socket
 from urllib.request import urlopen
 import json,ast,base64
@@ -20,17 +19,18 @@ from subprocess import PIPE
 from OpenSSL import crypto
 from Crypto.Hash import SHA256
 import time
+import binascii
 
-#server_url="https://192.168.0.14:33341/"
-server_url="https://localhost:33341/"
+server_url="https://192.168.0.10:33341/"
+#server_url="https://localhost:33341/"
 master_addr="192.168.0.4"
 tmp_current_imgfile_name = "sample_data_file"
 current_imgfile_name = "sample_data_file.signed"
 version_file_name = "version.signed"
 
-key_dir = "/home/pi/sota/SotaTeam3/keys/"
+key_dir = "../keys/"
 keyfile_name = key_dir+"./SigningServer/SignPriv.pem"
-cerfile_name = key_dir+"./SigningServer/SignPub.pem"
+cerfile_name = key_dir+"./SigningServer/SignCert.pem"
 master_cerfile_name = key_dir+'./Mastercert/MasterCert.pem'
 master_keyfile_name = key_dir+'./Mastercert/MasterPriv.pem'
 master_chain_name = key_dir+'./Mastercert/MasterChain.pem'
@@ -172,7 +172,9 @@ def image_down():
   print ("image_down")
   global server_file_name_signed
   server_file_response = https_connection(server_url, "GetLatestImage")
-  content = base64.b64decode(server_file_response.read())
+  content = json.loads(server_file_response)
+  content = base64.b64decode(content)
+  print("content: ", content)
   f = open(server_file_name_signed, "w") #sample_data_file_server.signed
   f.write(str(content))
   f.close()
@@ -186,11 +188,21 @@ def get_version_to_server():
   global server_version
 
   server_file_response = https_connection(server_url, "GetVersion")
-  content = json.load(server_file_response)
-  content = ast.literal_eval(content)
-  server_version_info = content['version_info'][0]
-  server_version = server_version_info.get('version')
-  return True
+  content = json.loads(server_file_response)
+  server_version = content['version'][7]
+  sig_bin = binascii.unhexlify(content['sign'])
+
+  with open(server_cerfile_name, 'rb+') as f:
+    cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+
+  if (verify_signature(cert, sig_bin, content['version'])):
+      with open(version_file_name, "w") as f:
+          f.write(server_file_response)
+      print ("verify ok")
+      return True
+  else:
+      print ("verify ng")
+      return False
 
 #----------------------------------------------------------------------------
 # HTTPS CONNECTION
@@ -205,8 +217,6 @@ def https_connection(url, data):
   print (url+data)
   response = urlopen(url+data, context=context)
   byte_data = response.read()
-  with open(version_file_name, "wb") as f:
-    f.write(byte_data)
   text_data = byte_data.decode('utf-8')
   return text_data
 
@@ -251,7 +261,7 @@ def main():
     print (server_version)
     print ("current version ")
     print (current_version)
-    if ret == True and server_version > current_version:
+    if ret == True and int(server_version) > current_version:
       image_down()
       ret = firmware_update()
     else :
