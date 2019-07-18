@@ -14,7 +14,7 @@ const version = mongoose.model('version', new Schema(
     }
 ));
 
-const certificate= mongoose.model('certificate', new Schema(
+const certificate = mongoose.model('certificate', new Schema(
     {
         cert: String,
         key: String,
@@ -26,8 +26,18 @@ const certificate= mongoose.model('certificate', new Schema(
     }
 ));
 
+const fingerprint = mongoose.model('fingerprint', new Schema(
+    {
+        value: String,
+    },
+    {
+        _id: false,
+        collection: "fingerprint"
+    }
+));
 
 module.exports = {
   version: version,
-  certificate: certificate
+  certificate: certificate,
+  fingerprint: fingerprint
 };

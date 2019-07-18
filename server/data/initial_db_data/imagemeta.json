@@ -1,17 +1,29 @@
 {
-    "versionInfo": [
+    "imageMeta": [
         {
             "version": "00.00.01",
             "path": "./test/image/test.txt",
             "type": "formatType1",
             "date": "Wed, 17 Jul 2019 05:58:54 GMT"  
+        },
+        {
+            "version": "00.00.02",
+            "path": "./test/image/sample_data_file_server",
+            "type": "formatType1",
+            "date": "Wed, 17 Jul 2019 08:54:54 GMT"  
         }
+
     ],
     "certificate": [
         {
             "cert": "./test/cert/cert.pem",
             "key": "./test/cert/key.pem",
             "cacert": "./test/cert/CACert.pem"
+        }
+    ],
+    "fingerprint": [
+        {
+            "value": "AE:EB:A5:DF:22:24:FA:05:4B:05:27:CE:DD:45:21:DF:0E:92:69:32:E3:C3:66:47:61:25:C7:C1:F2:5B:CF:3E"
         }
     ]
 }
