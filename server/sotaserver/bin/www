@@ -9,6 +9,7 @@ var debug = require('debug')('sotaserver:server');
 var https = require('https');
 const tls = require('tls');
 const logger = require('../common/logger.js');
+const ERROR_CODES = require('../common/errorcodes.js');
 
 // Client Should use TLS 1.3
 tls.DEFAULT_MIN_VERSION = 'TLSv1.3';
@@ -72,15 +73,43 @@ function startServer() {
 
   logger.info("Start server...");
 
-  server.listen(port);
-
   server.on('secureConnection', (tlssocket) => {
     logger.info('server connected',
                 tlssocket.authorized ? 'authorized' : 'unauthorized');
+
+    db.getClientFingerprints((errorcode, fingerprintlist) => {
+
+      let isNotValidClient = true;
+      if(ERROR_CODES.IsNoError(errorcode)) {
+        logger.info("FL TYPE: " + typeof fingerprintlist);
+        logger.info(fingerprintlist);
+        for (let clientfingerprint of fingerprintlist) {
+          if (tlssocket.getPeerCertificate().fingerprint256 === clientfingerprint.value) {
+            isNotValidClient = false;
+          }
+        }
+      } else {
+        console.log("Fail to get trust clients' fingerprint");
+      }
+
+      if (isNotValidClient) {
+        console.log(
+            'Certificate verification error: ' + 
+            `The certificate of '${tlssocket.getPeerCertificate().subject.CN}' ` +
+            'does not match our pinned fingerprint'
+        );
+        tlssocket.destroy();
+        server.getConnections(function(err, count){
+          console.log('Remaining Connections: ' + count);
+        }); 
+      }
+    });
   });
 
   server.on('error', onError);
   server.on('listening', onListening);
+
+  server.listen(port);
 }
 
 /**

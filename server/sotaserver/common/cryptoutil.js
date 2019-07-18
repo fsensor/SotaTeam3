@@ -5,8 +5,9 @@ const asynccaller = require('./asynccaller.js');
 const db = require('../storage/db.js');
 const hash_algorithm = 'SHA256';
 
-function sign(message, onResult) {
+function sign(message, key, onResult) {
   if (typeof message !== 'string' ||
+      typeof key === 'undefined' || key === null ||
       typeof onResult !== 'function') {
     return;
   }
@@ -15,18 +16,14 @@ function sign(message, onResult) {
 
   sign.update(message);
   sign.end();
-  db.getKey(key => {
-    let signature = null;
-    if (key !== null) {
-      signature = sign.sign(key, 'hex');
-    }
-    asynccaller.call(onResult, signature);
-  });
+
+  asynccaller.call(onResult, sign.sign(key, 'hex'));
 }
 
-function verify(message, signature, onResult)
+function verify(message, key, signature, onResult)
 {
   if (typeof message !== 'string' ||
+      typeof key === 'undefined' || key === null ||
       typeof signature !== 'string' ||
       typeof onResult !== 'function') {
     return false;
@@ -35,13 +32,7 @@ function verify(message, signature, onResult)
   let verify = crypto.createVerify(hash_algorithm);
   verify.update(message);
   verify.end();
-  db.getCert(cert => {
-    let result = false;
-    if (cert !== null) {
-      result = verify.verify(cert, signature, 'hex')
-    }
-    asynccaller.call(onResult, result);
-  })
+  asynccaller.call(onResult, verify.verify(key, signature, 'hex'));
   return ;
 }
 

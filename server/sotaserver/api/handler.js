@@ -44,13 +44,15 @@ function getVersion(onResult) {
 			if (ERROR_CODES.IsNoError(errorcode)) {
         let latestversion = getLatestVersion(meta);
         if (latestversion !== null) {
-          signer.sign(latestversion, signature => {
-            asynccaller.call(
-              onResult,
-              errorcode,
-              { version: latestversion, sign: signature }
-            );
-          });
+          db.getKey(key => {
+            signer.sign(latestversion, key, signature => {
+              asynccaller.call(
+                onResult,
+                errorcode,
+                { version: latestversion, sign: signature }
+              );
+            });
+          })
           return;
         } 
         logger.error("No latest version");        

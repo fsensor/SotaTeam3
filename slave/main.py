@@ -6,14 +6,14 @@ import struct
 import argparse
 import datetime
 import hashlib
-
+import binascii
 import ssl
 import socket
-import urllib2
-import json,ast
-import BaseHTTPServer, SimpleHTTPServer
-import threading
 
+import json,ast,base64
+import http.server
+import threading
+from urllib.request import urlopen
 from subprocess import Popen
 from subprocess import PIPE
 from OpenSSL import crypto
@@ -24,13 +24,28 @@ master_addr="192.168.0.4"
 tmp_current_imgfile_name = "sample_data_file"
 
 current_imgfile_name = "sample_data_file.signed"
-keyfile_name = "test.key" 
-cerfile_name = 'test.crt'
-https_cerfile_name = 'cert.pem'
-https_keyfile_name = 'key.pem'
+version_file_name = "version.signed"
+
+key_dir = "/home/pi/sota/SotaTeam3_0718/keys/"
+keyfile_name = key_dir+"./SigningServer/SignPriv.pem"
+cerfile_name = key_dir+"./SigningServer/SignPub.pem"
+master_cerfile_name = key_dir+'./Mastercert/MasterCert.pem'
+master_keyfile_name = key_dir+'./Mastercert/MasterPriv.pem'
+master_chain_name = key_dir+'./Mastercert/MasterChain.pem'
+server_cerfile_name = key_dir+'ServerCert/ServerCert.pem'
+server_keyfile_name = key_dir+'ServerCert/ServerPriv.pem'
+server_chain_name = key_dir+'ServerCert/ServerChain.pem'
+slave1_cerfile_name = key_dir+'./Slave1Cert/Slave1Cert.pem'
+slave1_keyfile_name = key_dir+'./Slave1Cert/Slave1Priv.pem'
+slave1_chain_name = key_dir+'./Slave1Cert/SlaveChain.pem'
+slave2_cerfile_name = key_dir+'./Slave2Cert/Slave2Cert.pem'
+slave2_keyfile_name = key_dir+'./Slave2Cert/Slave2Priv.pem'
+slave2_chain_name = key_dir+'./Slave2Cert/Slave2Chain.pem'
 
 #server data
 server_version = 0
+version_sig = ''
+
 server_file_name = "sample_data_file_server"
 server_file_name_signed = "sample_data_file_server.signed"
 #image structure
@@ -49,7 +64,7 @@ LGE_RSASIGN_SIZE  = 256
 #----------------------------------------------------------------------------
 def sign_image(img_name):
   # read image file
-  print "sign_image"
+  print ("sign_image")
 
   with open(img_name, 'rb') as f:
       f.seek(0, 2)
@@ -57,7 +72,7 @@ def sign_image(img_name):
       f.seek(0)
       img_data = f.read(imgfile_size)
       f.close()
-  img_hash = SHA256.new(img_data.encode('utf-8')).digest()
+  img_hash = SHA256.new(str(img_data).encode('utf-8')).digest()
 
   # sign with private RSA key
   with open(keyfile_name, 'rb+') as f:
@@ -71,7 +86,7 @@ def sign_image(img_name):
       f.write(img_data)
       f.write(rsa_sign)
       f.close()
-  print "end sign_image"
+  print ("end sign_image")
   return True
 
 def read_current_image():
@@ -82,8 +97,8 @@ def read_current_image():
   global current_sig 
   global current_imgfile_name
 
-  print "read_current_image"
-  print current_imgfile_name
+  print ("read_current_image")
+  print (current_imgfile_name)
   with open(current_imgfile_name, 'rb') as f:
       f.seek(0, 2)
       imgfile_size = f.tell()  
@@ -100,14 +115,14 @@ def read_current_image():
       current_sig = f.read(LGE_RSASIGN_SIZE)
       f.close()
 
-  print current_magic
-  print current_version[0]
+  print (current_magic)
+  print (current_version[0])
   current_version = current_version[0]
-  print current_body_len[0]
-  print current_body
-  print len(current_sig)
-  print type(current_sig)
-  print current_sig.encode("hex")
+  print (current_body_len[0])
+  print (current_body)
+  print (len(current_sig))
+  print (type(current_sig))
+  print (current_sig.hex())
 #sig = f.read(imgfile_size-)
 
 def verify_signature(cert, sig, dgst):
@@ -127,7 +142,7 @@ def verify_signature(cert, sig, dgst):
 def firmware_update():
   global server_file_name_signed
   global current_imgfile_name
-  print "verify"
+  print ("verify")
   
   with open(cerfile_name, 'rb+') as f:
     cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
@@ -138,14 +153,14 @@ def firmware_update():
       f.seek(0)
       msg = f.read(img_len-LGE_RSASIGN_SIZE)
       sig = f.read(LGE_RSASIGN_SIZE)
-      dgst = SHA256.new(msg.encode('utf-8')).digest()
+      dgst = SHA256.new(str(msg).encode('utf-8')).digest()
       f.close()
   if (verify_signature(cert, sig, dgst)):
-      print "verify ok"
+      print ("verify ok")
   else:
-      print "verify ng"
+      print ("verify ng")
       return False
-  print "change"
+  print ("change")
 
   os.remove(current_imgfile_name)
   os.rename(server_file_name_signed, current_imgfile_name)
@@ -156,8 +171,8 @@ def firmware_update():
 #----------------------------------------------------------------------------
 
 def image_down():
-  print "image_down"
-  global server_file_name_signed
+  print ("image_down")
+  global server_file_name_signedj
   global server_file_name
 #temp code, Local data needs to be changed to server data.
   server_file_response = https_connection(server_url, server_file_name)
@@ -168,16 +183,45 @@ def image_down():
 #does it need to error handling?
 
 #----------------------------------------------------------------------------
+# VERSION Verify
+#----------------------------------------------------------------------------
+def version_verify():
+  global version_file_name
+  global server_version
+  j_version = ''
+  j_sig = ''
+  b_sig = ''
+
+  print ("version_verify")
+  with open(version_file_name, "r") as json_file:
+    json_data = json.load(json_file)
+    j_version = json_data["version"]
+    j_sig = json_data["sign"]
+    json_file.close()
+
+  b_sig = (binascii.unhexlify(j_sig))
+
+  with open(server_cerfile_name,'rb+') as f:
+    cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+    f.close()
+  if verify_signature(cert, b_sig, j_version)is False :
+      return False
+  else :
+      server_version =  (int(j_version.replace(".","")))
+      return True
+  
+#----------------------------------------------------------------------------
 # GET VERSION INFO
 #----------------------------------------------------------------------------
 
-def get_version_to_server():
+def get_version_to_master():
   global server_version
-  server_file_response = https_connection(server_url, "/version")
+  server_file_response = https_connection(server_url, version_file_name)
   content = server_file_response.read()
-  server_version = int(content)
-  return True
-
+  with open(version_file_name, "wb") as f:
+    f.write(content)
+  f.close()
+#  version_verify()
 #----------------------------------------------------------------------------
 # HTTPS CONNECTION
 #----------------------------------------------------------------------------
@@ -186,9 +230,10 @@ def https_connection(url, data):
   context = ssl.SSLContext(ssl.PROTOCOL_TLS)
   context.verify_mode = ssl.CERT_REQUIRED
   context.check_hostname = False #This is check for DNSNAME
-  context.load_verify_locations(https_cerfile_name) #certificate file
-  print url+data
-  response = urllib2.urlopen(url+data, context=context)
+  context.load_verify_locations(server_chain_name) #certificate file
+  context.load_cert_chain(certfile=slave1_cerfile_name, keyfile=slave1_keyfile_name)
+  print (url+data)
+  response = urlopen(url+data, context=context)
   return response
 
 #----------------------------------------------------------------------------
@@ -203,28 +248,33 @@ def main():
   read_current_image()
   while True:
     time.sleep(5)
-    print "i'm alive"
-    ret = get_version_to_server()
+    print ("i'm alive")
+    ret = get_version_to_master()
     if ret == False:
-      print "connection failed"
+      print ("connection failed")
       continue
-    print "server _version "
-    print server_version
-    print "currten version "
-    print current_version
+    ret = version_verify()
+    if ret == False:
+      print ("server version verify fail")
+      continue
+    print ("server version ")
+    print (server_version)
+    print ("current version ")
+    print (current_version)
     if ret == True and server_version > current_version:
       image_down()
       ret = firmware_update()
+#      exit(1)
     else :
       continue
     if ret == True:
-      print "change current version"
+      print ("change current version")
       current_version = server_version
       server_version = 0
-      print "server _version "
-      print server_version
-      print "currten version "
-      print current_version
+      print ("server version ")
+      print (server_version)
+      print ("current version ")
+      print (current_version)
     else : 
       continue
   sys.exit()
